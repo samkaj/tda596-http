@@ -10,4 +10,4 @@
 ## Running
 
 - Run [`run.sh`](./run.sh) if you have bash.
-- If no bash: [`run.bat`](./run.sh) in powershell on windows.
+- If no bash: [`run.bat`](./run.bat) in powershell on windows.
