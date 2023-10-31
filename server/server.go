@@ -74,8 +74,8 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 	switch method := req.Method; method {
 	case http.MethodGet:
 		s.HandleGet(req, res)
-	case http.MethodPut:
-		s.HandlePut(req, res)
+	case http.MethodPost:
+		s.HandlePost(req, res)
 	default:
 		s.HandleBadRequest(req, res)
 	}
@@ -130,6 +130,26 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	res.Body = CreateBody(string(data))
 }
 
+// Handles HTTP PUT requests.
+func (s *Server) HandlePost(req *http.Request, res *http.Response) {
+	fmt.Println("Got POST")
+	// Get file name from URL param
+	filename := req.URL.Query().Get("filename")
+	// Get file data
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		s.HandleBadRequest(req, res)
+	}
+	// Write to fs
+	path := fmt.Sprintf("/Users/samkaj/code/dist/http-lab/fs/%s", filename) // FIXME: absolute path...
+	WriteFile(path, data)
+
+	// Build response
+	res.Status = "200 OK"
+	res.StatusCode = 200
+	res.Body = CreateBody("200 OK")
+}
+
 // Builds a 404 Not Found response.
 func (s *Server) HandleNotFound(res *http.Response) {
 	res.Status = "404 Not Found"
@@ -137,14 +157,8 @@ func (s *Server) HandleNotFound(res *http.Response) {
 	res.Body = CreateBody("404 Not Found")
 }
 
-// Handles HTTP PUT requests.
-func (s *Server) HandlePut(req *http.Request, res *http.Response) {
-	fmt.Println("Got PUT")
-}
-
 // Handles forbidden HTTP methods.
 func (s *Server) HandleBadRequest(req *http.Request, res *http.Response) {
-
 	// Bad request
 	res.Status = "400 Bad Request"
 	res.StatusCode = 400
