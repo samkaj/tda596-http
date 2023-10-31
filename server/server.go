@@ -88,8 +88,7 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 // Checks the file extension of a request and returns the Content-Type.
 // It returns any error that occured.
 // Allowed Content-Types: text/html, text/plain, image/gif, image/jpeg, image/jpeg, or text/css.
-func (s *Server) DetermineContentType(req http.Request) (string, error) {
-
+func DetermineContentType(req *http.Request) (string, error) {
 	switch ct := path.Ext(req.URL.Path); ct {
 	case ".html":
 		return "text/html", nil
@@ -110,7 +109,32 @@ func (s *Server) DetermineContentType(req http.Request) (string, error) {
 // Handles HTTP GET requests.
 func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	fmt.Println("Got GET")
+	contentType, err := DetermineContentType(req)
+	if err != nil {
+		s.HandleBadRequest(req, res)
+		return
+	}
+	// Initialize the header
+	res.Header = make(http.Header)
+	// Set the header content type based on the extension that has been requested
+	res.Header.Set("Content-Type", contentType)
 
+	// TODO: Fix me
+	path := fmt.Sprintf("/Users/samkaj/code/dist/http-lab/fs%s", req.URL.Path) // FIXME: absolute path...
+	data, err := GetFile(path)
+	if err != nil {
+		s.HandleNotFound(res)
+		return
+	}
+
+	res.Body = CreateBody(string(data))
+}
+
+// Builds a 404 Not Found response.
+func (s *Server) HandleNotFound(res *http.Response) {
+	res.Status = "404 Not Found"
+	res.StatusCode = 404
+	res.Body = CreateBody("404 Not Found")
 }
 
 // Handles HTTP PUT requests.
