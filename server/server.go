@@ -3,8 +3,11 @@ package server
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"path"
+	"strings"
 )
 
 type Server struct {
@@ -57,30 +60,75 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 		return err
 	}
 
+	body := io.NopCloser(strings.NewReader("hello"))
+
+	res := &http.Response{
+		Status:     "200 OK",
+		StatusCode: 200,
+		Body:       body,
+		Proto:      "HTTP/1.0",
+		ProtoMajor: 1,
+		ProtoMinor: 0,
+	}
+
 	switch method := req.Method; method {
 	case http.MethodGet:
-		s.HandleGet(req)
+		s.HandleGet(req, res)
 	case http.MethodPut:
-		s.HandlePut(req)
+		s.HandlePut(req, res)
 	default:
-		fmt.Println("FIXME: bad request...")
+		s.HandleBadRequest(req, res)
 	}
+
+	res.Write(conn)
 
 	return nil
 }
 
+// Checks the file extension of a request and returns the Content-Type.
+// It returns any error that occured.
+// Allowed Content-Types: text/html, text/plain, image/gif, image/jpeg, image/jpeg, or text/css.
+func (s *Server) DetermineContentType(req http.Request) (string, error) {
+
+	switch ct := path.Ext(req.URL.Path); ct {
+	case ".html":
+		return "text/html", nil
+	case "":
+		return "text/plain", nil
+	case ".css":
+		return "text/css", nil
+	case ".gif":
+		return "image/gif", nil
+	case ".jpeg":
+		return "image/jpeg", nil
+	case ".jpg":
+		return "image/jpg", nil
+	}
+	return "", fmt.Errorf("invalid content type")
+}
+
 // Handles HTTP GET requests.
-func (s *Server) HandleGet(req *http.Request) {
+func (s *Server) HandleGet(req *http.Request, res *http.Response) {
+	fmt.Println("Got GET")
 
 }
 
 // Handles HTTP PUT requests.
-func (s *Server) HandlePut(req *http.Request) {
-
+func (s *Server) HandlePut(req *http.Request, res *http.Response) {
+	fmt.Println("Got PUT")
 }
 
 // Handles forbidden HTTP methods.
-func (s *Server) HandleBadRequest(req *http.Request) {
+func (s *Server) HandleBadRequest(req *http.Request, res *http.Response) {
+
+	// Bad request
+	res.Status = "400 Bad Request"
+	res.StatusCode = 400
+	res.Body = CreateBody("400 Bad Request")
+}
+
+func CreateBody(text string) io.ReadCloser {
+	return io.NopCloser(strings.NewReader(text + "\n"))
 }
 
 // Closes the server's listener.
