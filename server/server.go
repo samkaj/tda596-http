@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"path"
@@ -40,9 +41,14 @@ func (s *Server) Listen() error {
 		return err
 	}
 	s.Listener = listener
+	log.Printf("listening for connections on %s", s.addr())
+	return nil
+}
 
+// Accepts and handles connections in go routines.
+func (s *Server) Serve() error {
 	for {
-		conn, err := listener.Accept()
+		conn, err := s.Listener.Accept()
 		if err != nil {
 			return err
 		}
@@ -52,6 +58,7 @@ func (s *Server) Listen() error {
 
 // Given an established connection to a client, this method will handles incoming HTTP requests from the client
 func (s *Server) HandleConnection(conn net.Conn) error {
+	log.Printf("handling connection from %s", conn.LocalAddr().String())
 	// Defer is run after the HandleConnection routine is done
 	defer conn.Close()
 
@@ -108,7 +115,6 @@ func DetermineContentType(req *http.Request) (string, error) {
 
 // Handles HTTP GET requests.
 func (s *Server) HandleGet(req *http.Request, res *http.Response) {
-	fmt.Println("Got GET")
 	contentType, err := DetermineContentType(req)
 	if err != nil {
 		s.HandleBadRequest(req, res)
@@ -132,7 +138,6 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 
 // Handles HTTP PUT requests.
 func (s *Server) HandlePost(req *http.Request, res *http.Response) {
-	fmt.Println("Got POST")
 	// Get file name from URL param
 	filename := req.URL.Query().Get("filename")
 	// Get file data
