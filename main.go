@@ -14,7 +14,7 @@ func main() {
 
 	host := os.Args[1]
 	port, err := strconv.Atoi(os.Args[2])
-	server, err := server.CreateServer(host, port, 3)
+	server, err := server.CreateServer(host, port, 10)
 	if err != nil {
 		fmt.Printf("failed to start server with error: %v", err)
 		os.Exit(1)

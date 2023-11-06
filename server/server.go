@@ -9,13 +9,14 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 )
 
 type Server struct {
-	Address        string
-	Port           int
-	MaxConnections int
-	Listener       net.Listener
+	Address  string
+	Port     int
+	Listener net.Listener
+	sem      chan bool
 }
 
 // Tries to create an HTTP server on the specific port and address that allows
@@ -27,9 +28,9 @@ func CreateServer(address string, port, maxConnections int) (*Server, error) {
 	}
 
 	return &Server{
-		Address:        address,
-		Port:           port,
-		MaxConnections: maxConnections,
+		Address: address,
+		Port:    port,
+		sem:     createSemaphore(maxConnections),
 	}, nil
 }
 
@@ -40,26 +41,30 @@ func (s *Server) Listen() error {
 	if err != nil {
 		return err
 	}
-	s.Listener = listener
+
 	log.Printf("listening for connections on %s", s.addr())
+	s.Listener = listener
 	return nil
 }
 
-// Accepts and handles connections in go routines.
+// Accepts and handles connections in goroutines.
 func (s *Server) Serve() error {
 	for {
-		conn, err := s.Listener.Accept()
-		if err != nil {
-			return err
+		if <-s.sem {
+			conn, err := s.Listener.Accept()
+			if err != nil {
+				return err
+			}
+			go s.HandleConnection(conn)
 		}
-		go s.HandleConnection(conn)
 	}
 }
 
 // Given an established connection to a client, this method will handles incoming HTTP requests from the client
 func (s *Server) HandleConnection(conn net.Conn) error {
-	log.Printf("handling connection from %s", conn.LocalAddr().String())
-	// Defer is run after the HandleConnection routine is done
+	log.Printf("handling connection from %s\n", conn.LocalAddr().String())
+	time.Sleep(time.Millisecond * 500)
+
 	defer conn.Close()
 
 	req, err := http.ReadRequest(bufio.NewReader(conn))
@@ -88,7 +93,7 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 	}
 
 	res.Write(conn)
-
+	s.sem <- true
 	return nil
 }
 
@@ -182,4 +187,14 @@ func (s *Server) Close() {
 // Returns the server's address and port as a string.
 func (s *Server) addr() string {
 	return fmt.Sprintf("%s:%d", s.Address, s.Port)
+}
+
+// Creates and initializes channel for controlling
+// number of active connections.
+func createSemaphore(size int) chan bool {
+	sem := make(chan bool, size)
+	for i := 0; i < size; i++ {
+		sem <- true
+	}
+	return sem
 }
