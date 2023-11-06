@@ -90,7 +90,7 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 	case http.MethodPost:
 		s.HandlePost(req, res)
 	default:
-		s.HandleBadRequest(req, res)
+		s.HandleForbidden(res)
 	}
 
 	res.Write(conn)
@@ -123,7 +123,7 @@ func DetermineContentType(req *http.Request) (string, error) {
 func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	contentType, err := DetermineContentType(req)
 	if err != nil {
-		s.HandleBadRequest(req, res)
+		s.HandleForbidden(res)
 		return
 	}
 
@@ -131,12 +131,12 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	res.Header = make(http.Header)
 	res.Header.Set("Content-Type", contentType)
 
-	// Put together the path to the file with path.Join
 	path := filepath.Join("fs", req.URL.Path)
 	if err != nil {
 		s.HandleNotFound(res)
 		return
 	}
+
 	data, err := GetFile(path)
 	if err != nil {
 		s.HandleNotFound(res)
@@ -148,17 +148,20 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 
 // Handles HTTP POST requests.
 func (s *Server) HandlePost(req *http.Request, res *http.Response) {
-	// Get filename and path
-	filename := path.Base(req.URL.Path)
-	path := filepath.Join("fs", filename)
+	// Determine path
+	path := path.Join("./fs", req.URL.Path)
 
 	// Get file data
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
-		s.HandleBadRequest(req, res)
+		s.HandleForbidden(res)
 	}
+
 	// Write to fs
-	WriteFile(path, data)
+	if err = WriteFile(path, data); err != nil {
+		s.HandleInternalServerError(res)
+		return
+	}
 
 	// Build response
 	res.Status = "200 OK"
@@ -174,11 +177,17 @@ func (s *Server) HandleNotFound(res *http.Response) {
 }
 
 // Handles forbidden HTTP methods.
-func (s *Server) HandleBadRequest(req *http.Request, res *http.Response) {
-	// Bad request
-	res.Status = "400 Bad Request"
-	res.StatusCode = 400
-	res.Body = CreateBody("400 Bad Request")
+func (s *Server) HandleForbidden(res *http.Response) {
+	res.Status = "403 Forbidden"
+	res.StatusCode = 403
+	res.Body = CreateBody("403 Forbidden")
+}
+
+// Handles internal server errors.
+func (s *Server) HandleInternalServerError(res *http.Response) {
+	res.Status = "500 Internal Server Error"
+	res.StatusCode = 500
+	res.Body = CreateBody("500 Internal Server Error")
 }
 
 func CreateBody(text string) io.ReadCloser {
