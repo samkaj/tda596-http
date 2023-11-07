@@ -10,14 +10,13 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type Server struct {
 	Address  string
 	Port     int
 	Listener net.Listener
-	sem      chan bool
+	Sem      chan bool
 }
 
 // Tries to create an HTTP server on the specific port and address that allows
@@ -31,7 +30,7 @@ func CreateServer(address string, port, maxConnections int) (*Server, error) {
 	return &Server{
 		Address: address,
 		Port:    port,
-		sem:     createSemaphore(maxConnections),
+		Sem:     createSemaphore(maxConnections),
 	}, nil
 }
 
@@ -51,8 +50,9 @@ func (s *Server) Listen() error {
 // Accepts and handles connections in goroutines.
 func (s *Server) Serve() error {
 	for {
-		if <-s.sem {
+		if <-s.Sem {
 			conn, err := s.Listener.Accept()
+
 			if err != nil {
 				return err
 			}
@@ -61,11 +61,10 @@ func (s *Server) Serve() error {
 	}
 }
 
+
 // Handles incoming HTTP requests from client connection.
 func (s *Server) HandleConnection(conn net.Conn) error {
-	log.Printf("handling connection from %s\n", conn.LocalAddr().String())
-	time.Sleep(time.Millisecond * 500)
-
+	log.Printf("handling connection from %s\n", conn.RemoteAddr().String())
 	defer conn.Close()
 
 	req, err := http.ReadRequest(bufio.NewReader(conn))
@@ -73,7 +72,7 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 		return err
 	}
 
-	body := io.NopCloser(strings.NewReader("hello"))
+	body := io.NopCloser(strings.NewReader(""))
 
 	res := &http.Response{
 		Status:     "200 OK",
@@ -94,7 +93,7 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 	}
 
 	res.Write(conn)
-	s.sem <- true
+	s.Sem <- true
 	return nil
 }
 
@@ -131,7 +130,7 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	res.Header = make(http.Header)
 	res.Header.Set("Content-Type", contentType)
 
-	path := filepath.Join("fs", req.URL.Path)
+	path := filepath.Join("./fs", req.URL.Path)
 	if err != nil {
 		s.HandleNotFound(res)
 		return
