@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"lab1/server"
+	"log"
 	"os"
 	"strconv"
 )
 
 func main() {
+    log.SetPrefix("[SERVER] ")
 	if len(os.Args) < 3 {
 		printUsage()
 	}
