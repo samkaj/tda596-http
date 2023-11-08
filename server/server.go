@@ -7,12 +7,13 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
 )
 
-// Server is a simple implementation of an HTTP/1.0 web server for serving static files. Allowed methods are GET and POST.
+// Server is a simple implementation of an HTTP/1.0 web server for serving static files.
 type Server struct {
 	Address  string
 	Port     int
@@ -20,9 +21,7 @@ type Server struct {
 	Sem      chan bool
 }
 
-// Tries to create an HTTP server on the specific port and address that allows
-// at most maxConnections concurrent connections (at most 10).
-// It returns the server and any error that occured.
+// CreateServer tries to create an HTTP server on the specified port and address.
 func CreateServer(address string, port, maxConnections int) (*Server, error) {
 	if maxConnections < 1 || maxConnections > 10 {
 		return nil, fmt.Errorf("invalid amount of maximum number of connections (1-10), got %d", maxConnections)
@@ -35,56 +34,65 @@ func CreateServer(address string, port, maxConnections int) (*Server, error) {
 	}, nil
 }
 
-// Establishes a socket connection and listens for connections.
-// It returns any error that occured.
+// Listen establishes a socket connection and listens for incoming connections.
 func (s *Server) Listen() error {
-	listener, err := net.Listen("tcp", s.addr())
+	var err error
+	s.Listener, err = net.Listen("tcp", s.addr())
 	if err != nil {
+		log.Printf("Error starting server on %s: %v", s.addr(), err)
 		return err
 	}
-
-	log.Printf("listening for connections on %s", s.addr())
-	s.Listener = listener
+	log.Printf("Listening for connections on %s", s.addr())
 	return nil
 }
 
-// Accepts and handles connections in goroutines.
+// Serve accepts and handles connections in goroutines.
 func (s *Server) Serve() error {
 	for {
-		if <-s.Sem {
+		select {
+		case <-s.Sem:
 			conn, err := s.Listener.Accept()
-
 			if err != nil {
-				return err
+				log.Printf("Error accepting connection: %v", err)
+				continue
 			}
-			go s.HandleConnection(conn)
+			go func() {
+				err := s.HandleConnection(conn)
+				if err != nil {
+					log.Printf("Error handling connection: %v", err)
+				}
+				s.Sem <- true
+			}()
 		}
 	}
 }
 
-
-// Handles incoming HTTP requests from client connection.
+// HandleConnection manages incoming HTTP requests from client connections.
 func (s *Server) HandleConnection(conn net.Conn) error {
-	log.Printf("handling connection from %s\n", conn.RemoteAddr().String())
+	remoteAddr := conn.RemoteAddr().String()
 	defer conn.Close()
+	log.Printf("Handling connection from %s", remoteAddr)
 
 	req, err := http.ReadRequest(bufio.NewReader(conn))
 	if err != nil {
+		if err != io.EOF {
+			log.Printf("Error reading request from %s: %v", remoteAddr, err)
+		} else {
+			log.Printf("Client %s closed the connection", remoteAddr)
+		}
 		return err
 	}
-
-	body := io.NopCloser(strings.NewReader(""))
 
 	res := &http.Response{
 		Status:     "200 OK",
 		StatusCode: 200,
-		Body:       body,
 		Proto:      "HTTP/1.0",
 		ProtoMajor: 1,
 		ProtoMinor: 0,
+		Body:       io.NopCloser(strings.NewReader("")),
 	}
 
-	switch method := req.Method; method {
+	switch req.Method {
 	case http.MethodGet:
 		s.HandleGet(req, res)
 	case http.MethodPost:
@@ -93,119 +101,120 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 		s.HandleForbidden(res)
 	}
 
-	res.Write(conn)
-	s.Sem <- true
-	return nil
+	err = res.Write(conn)
+	if err != nil {
+		log.Printf("Error writing response to %s: %v", remoteAddr, err)
+	}
+	return err
 }
 
-// Checks the file extension of a request and returns the Content-Type.
-// It returns any error that occured.
-// Allowed Content-Types: text/html, text/plain, image/gif, image/jpeg, image/jpeg, or text/css.
+// DetermineContentType checks the file extension of a request.
 func DetermineContentType(req *http.Request) (string, error) {
-	switch ct := path.Ext(req.URL.Path); ct {
+	ext := path.Ext(req.URL.Path)
+	switch ext {
 	case ".html":
 		return "text/html", nil
-	case "":
-		return "text/plain", nil
 	case ".css":
 		return "text/css", nil
 	case ".gif":
 		return "image/gif", nil
-	case ".jpeg":
+	case ".jpeg", ".jpg":
 		return "image/jpeg", nil
-	case ".jpg":
-		return "image/jpg", nil
+	default:
+		if ext == "" {
+			return "text/plain", nil
+		}
+		log.Printf("Invalid content type for extension: %s", ext)
+		return "", fmt.Errorf("unsupported content type: %s", ext)
 	}
-	return "", fmt.Errorf("invalid content type")
 }
 
-// Handles HTTP GET requests.
+// HandleGet serves GET requests.
 func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	contentType, err := DetermineContentType(req)
 	if err != nil {
+		log.Printf("Error determining content type: %v", err)
 		s.HandleForbidden(res)
 		return
 	}
 
-	// Set the header content type based on the extension that has been requested
 	res.Header = make(http.Header)
 	res.Header.Set("Content-Type", contentType)
 
-	path := filepath.Join("./fs", req.URL.Path)
+	filePath := filepath.Join("./fs", req.URL.Path)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
-		s.HandleNotFound(res)
+		if os.IsNotExist(err) {
+			s.HandleNotFound(res)
+		} else {
+			log.Printf("Error reading file %s: %v", filePath, err)
+			s.HandleInternalServerError(res)
+		}
 		return
 	}
 
-	data, err := GetFile(path)
-	if err != nil {
-		s.HandleNotFound(res)
-		return
-	}
-
-	res.Body = CreateBody(string(data))
+	res.Body = io.NopCloser(strings.NewReader(string(data)))
 }
 
-// Handles HTTP POST requests.
+// HandlePost processes POST requests.
 func (s *Server) HandlePost(req *http.Request, res *http.Response) {
-	// Determine path
-	path := path.Join("./fs", req.URL.Path)
+	filePath := filepath.Join("./fs", req.URL.Path)
 
-	// Get file data
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
+		log.Printf("Error reading request body: %v", err)
 		s.HandleForbidden(res)
+		return
 	}
 
-	// Write to fs
-	if err = WriteFile(path, data); err != nil {
+	err = os.WriteFile(filePath, data, 0644)
+	if err != nil {
+		log.Printf("Error writing to file %s: %v", filePath, err)
 		s.HandleInternalServerError(res)
 		return
 	}
 
-	// Build response
-	res.Status = "200 OK"
-	res.StatusCode = 200
-	res.Body = CreateBody("200 OK")
+	res.Body = io.NopCloser(strings.NewReader("200 OK"))
 }
 
-// Builds a 404 Not Found response.
+// HandleNotFound builds a 404 Not Found response.
 func (s *Server) HandleNotFound(res *http.Response) {
 	res.Status = "404 Not Found"
 	res.StatusCode = 404
-	res.Body = CreateBody("404 Not Found")
+	res.Body = io.NopCloser(strings.NewReader("404 Not Found"))
 }
 
-// Handles forbidden HTTP methods.
+// HandleForbidden handles forbidden HTTP methods by setting a 403 Forbidden response.
 func (s *Server) HandleForbidden(res *http.Response) {
 	res.Status = "403 Forbidden"
 	res.StatusCode = 403
-	res.Body = CreateBody("403 Forbidden")
+	res.Body = io.NopCloser(strings.NewReader("403 Forbidden"))
 }
 
-// Handles internal server errors.
+// HandleInternalServerError builds a 500 Internal Server Error response.
 func (s *Server) HandleInternalServerError(res *http.Response) {
 	res.Status = "500 Internal Server Error"
 	res.StatusCode = 500
-	res.Body = CreateBody("500 Internal Server Error")
+	res.Body = io.NopCloser(strings.NewReader("500 Internal Server Error"))
 }
 
 func CreateBody(text string) io.ReadCloser {
 	return io.NopCloser(strings.NewReader(text + "\n"))
 }
 
-// Closes the server's listener.
+// Close attempts to close the server's listener and logs any error.
 func (s *Server) Close() {
-	s.Listener.Close()
+	if err := s.Listener.Close(); err != nil {
+		log.Printf("Error closing server listener: %v", err)
+	}
 }
 
-// Returns the server's address and port as a string.
+// addr returns the server's address and port as a string.
 func (s *Server) addr() string {
 	return fmt.Sprintf("%s:%d", s.Address, s.Port)
 }
 
-// Creates and initializes channel for controlling
-// number of active connections.
+// createSemaphore creates a channel to control the number of active connections.
 func createSemaphore(size int) chan bool {
 	sem := make(chan bool, size)
 	for i := 0; i < size; i++ {
