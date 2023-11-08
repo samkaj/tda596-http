@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+// Server is a simple implementation of an HTTP/1.0 web server for serving static files. Allowed methods are GET and POST.
 type Server struct {
 	Address  string
 	Port     int
