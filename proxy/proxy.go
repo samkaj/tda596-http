@@ -2,17 +2,16 @@ package proxy
 
 import (
 	"bufio"
-	"fmt"
+	"io"
 	"lab1/server"
 	"log"
 	"net"
 	"net/http"
-	"strings"
 )
 
 // Proxy is a wrapper for a regular server with additional
 //   - restraints - only GET:s are allowed,
-//   - functionality - acts on behalf of the client by making the 
+//   - functionality - acts on behalf of the client by making the
 //     requests and passing back the response.
 type Proxy struct {
 	proxyServer *server.Server
@@ -49,7 +48,8 @@ func (p *Proxy) Serve() error {
 		if <-p.proxyServer.Sem {
 			conn, err := p.proxyServer.Listener.Accept()
 			if err != nil {
-				return err
+				log.Printf("Failed to accept connection: %v\n", err)
+				continue
 			}
 
 			go p.HandleConnection(conn)
@@ -57,46 +57,54 @@ func (p *Proxy) Serve() error {
 	}
 }
 
-func (p *Proxy) HandleConnection(conn net.Conn) error {
+func (p *Proxy) HandleConnection(conn net.Conn) {
 	defer conn.Close()
-	log.Printf("handling connection via proxy from %s\n", conn.RemoteAddr().String())
+	log.Printf("Handling connection via proxy from %s\n", conn.RemoteAddr().String())
 
 	req, err := http.ReadRequest(bufio.NewReader(conn))
 	if err != nil {
-		return err
+		if err != io.EOF {
+			log.Printf("Error reading request from %s: %v\n", req.RemoteAddr, err)
+		} else {
+			log.Printf("Connection closed by client %s\n", req.RemoteAddr)
+		}
+		p.proxyServer.Sem <- true
+		return
 	}
 
 	// Only allow HTTP GET.
 	if req.Method != http.MethodGet {
-        p.SendNotImplemented(conn)
-		return fmt.Errorf("received forbidden HTTP method: %s", req.Method)
+		p.SendNotImplemented(conn)
+		log.Printf("Received forbidden HTTP method from %s: %s\n", req.RemoteAddr, req.Method)
+		p.proxyServer.Sem <- true
+		return
 	}
 
 	// Act on behalf of the client (proxy user).
-    res, err := p.SendRequestToServer(req)
+	res, err := p.SendRequestToServer(req)
 	if err != nil {
-		return err
+		log.Printf("Error sending request to server: %v\n",  err)
+		p.proxyServer.Sem <- true
+		return
 	}
 
 	// Send back the response to the proxy user.
-	p.SendResponseToClient(conn, res)
+	err = p.SendResponseToClient(conn, res)
+	if err != nil {
+		log.Printf("Error sending response to client: %v\n",  err)
+	}
 	p.proxyServer.Sem <- true
-	return nil
 }
 
 // Sends a HTTP GET request to the server and returns it and any
 // errors that occured.
 func (p *Proxy) SendRequestToServer(req *http.Request) (*http.Response, error) {
-	path := req.URL.Path
-	if strings.HasSuffix(path, "/") {
-		path = strings.TrimRight(path, "/")
-	}
-
 	res, err := http.Get(req.RequestURI)
 	if err != nil {
-		log.Println(err)
+		log.Printf("Error sending GET request %s: %v\n", req.RequestURI, err)
 		return nil, err
 	}
+
 	return res, nil
 }
 
@@ -109,7 +117,11 @@ func (p *Proxy) SendNotImplemented(conn net.Conn) {
 		ProtoMajor: 1,
 		ProtoMinor: 0,
 	}
-    res.Write(conn)
+
+	err := res.Write(conn)
+	if err != nil {
+		log.Printf("Error sending 501 to client: %v\n", err)
+	}
 }
 
 // Sends back the response acquired from the server to the client
@@ -119,6 +131,8 @@ func (p *Proxy) SendResponseToClient(conn net.Conn, res *http.Response) error {
 	if err != nil {
 		return err
 	}
+
+    log.Printf("Sending response with status %d to client\n", res.StatusCode)
 	return nil
 }
 
