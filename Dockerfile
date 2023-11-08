@@ -7,8 +7,9 @@ COPY go.mod ./
 RUN go mod download
 COPY *.go ./
 COPY server ./server
-RUN CGO_ENABLED=0 GOOS=linux go build -o /http-server
+COPY cmd ./cmd
+RUN mkdir fs
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/http_server ./cmd/server/main.go
 EXPOSE 8080
 
-ENTRYPOINT ["/http-server"]
-CMD ["host-arg", "port-arg"]
+ENTRYPOINT ["/app/http_server"]
