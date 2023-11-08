@@ -12,20 +12,16 @@ import (
 )
 
 type Proxy struct {
-	serverAddress string
-	serverPort    int
 	proxyServer   *server.Server
 }
 
-func CreateProxy(serverAddress, proxyAddress string, serverPort, proxyPort int) (*Proxy, error) {
-	server, err := server.CreateServer(proxyAddress, proxyPort, 10)
+func CreateProxy(port int) (*Proxy, error) {
+    server, err := server.CreateServer("0.0.0.0", port, 10)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Proxy{
-        serverAddress: serverAddress,
-        serverPort: serverPort,
 		proxyServer: server,
 	}, nil
 }
@@ -75,7 +71,7 @@ func (p *Proxy) HandleGetConnection(conn net.Conn) error {
 		return fmt.Errorf("received forbidden HTTP method: %s", req.Method)
 	}
 
-	res, err = p.SendGetToServer(req)
+    res, err = p.SendGetToServer(req)
 	if err != nil {
 		return err
 	}
@@ -92,7 +88,7 @@ func (p *Proxy) SendGetToServer(req *http.Request) (*http.Response, error) {
 		path = strings.TrimRight(path, "/")
 	}
 
-    res, err := http.Get(fmt.Sprintf("http://%s:%d%s", p.serverAddress, p.serverPort, path))
+    res, err := http.Get(req.RequestURI)
 	if err != nil {
 		log.Println(err)
 		return nil, err

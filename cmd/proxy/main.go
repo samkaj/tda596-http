@@ -3,11 +3,14 @@ package main
 import (
 	"lab1/proxy"
 	"log"
+	"os"
+	"strconv"
 )
 
 func main() {
     log.SetPrefix("[PROXY] ")
-	proxy, err := proxy.CreateProxy("localhost", "localhost", 8080, 6060)
+	port, err := strconv.Atoi(os.Args[1])
+	proxy, err := proxy.CreateProxy(port)
 	if err != nil {
 		panic(err)
 	}
