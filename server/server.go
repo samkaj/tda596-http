@@ -74,6 +74,7 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 	log.Printf("Handling connection from %s", remoteAddr)
 
 	req, err := http.ReadRequest(bufio.NewReader(conn))
+	fmt.Printf("req: %v\n", req)
 	if err != nil {
 		if err != io.EOF {
 			log.Printf("Error reading request from %s: %v", remoteAddr, err)
@@ -155,6 +156,9 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 
 	res.Body = io.NopCloser(strings.NewReader(string(data)))
 }
+
+
+
 
 // HandlePost processes POST requests.
 func (s *Server) HandlePost(req *http.Request, res *http.Response) {
