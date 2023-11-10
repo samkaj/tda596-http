@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-    log.SetPrefix("[PROXY] ")
+	log.SetPrefix("[PROXY] ")
 	port, err := strconv.Atoi(os.Args[1])
 	proxy, err := proxy.CreateProxy(port)
 	if err != nil {

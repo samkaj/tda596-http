@@ -157,9 +157,6 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	res.Body = io.NopCloser(strings.NewReader(string(data)))
 }
 
-
-
-
 // HandlePost processes POST requests.
 func (s *Server) HandlePost(req *http.Request, res *http.Response) {
 	filePath := filepath.Join("./fs", req.URL.Path)

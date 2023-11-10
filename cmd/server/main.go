@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-    log.SetPrefix("[SERVER] ")
+	log.SetPrefix("[SERVER] ")
 	if len(os.Args) < 3 {
 		printUsage()
 	}
