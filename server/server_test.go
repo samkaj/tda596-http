@@ -1,114 +1,102 @@
 package server
 
 import (
-	"net"
+	"io"
+	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
 
-var server *Server
-
 type testReq struct {
-	reqType string
-	path    string
-	want    string
-	Body    string
-}
-
-func setup() *Server {
-	server, _ = CreateServer("localhost", 8080, 10)
-	server.Listen()
-	go server.Serve()
-	return server
-
-}
-
-func shutdown() {
-	server.Close()
+	reqType     string
+	path        string
+	want        string
+	contentType string
+	body        string
 }
 
 func TestMain(m *testing.M) {
 	setup()
-	code := m.Run()
-	shutdown()
-	os.Exit(code)
+	m.Run()
+	cleanup()
 }
 
-func TestListen(t *testing.T) {
+func setup() {
+	log.Println("Setup: creating server")
+	server, _ := CreateServer("0.0.0.0", 8080, 10)
+	server.Listen()
+	go server.Serve()
+}
 
-	if server.Listener == nil {
-		t.Errorf("server.Listener is nil")
-	}
+func cleanup() {
+	os.RemoveAll("/Users/samkaj/code/dist/http-lab/fs")
 }
 
 func TestGetNotFound(t *testing.T) {
 	tests := []testReq{
-		{reqType: "GET", path: "", want: "HTTP/1.0 404 Not Found\n"},
-		{reqType: "GET", path: "/path", want: "HTTP/1.0 404 Not Found\n"},
-		{reqType: "GET", path: "/hej", want: "HTTP/1.0 404 Not Found\n"},
+		{reqType: "GET", path: "", want: "404 Not Found"},
+		{reqType: "GET", path: "/path", want: "404 Not Found"},
+		{reqType: "GET", path: "/hej", want: "404 Not Found"},
 	}
 
 	for _, tr := range tests {
-		sendReq(t, tr)
+		sendGetReq(t, tr)
 	}
 }
 
-func TestPost(t *testing.T) {
+func TestPostContentType(t *testing.T) {
 	tests := []testReq{
-		{reqType: "POST", path: "/test.txt", want: "HTTP/1.0 404 Not Found\n", Body: "Hello World"},
+		{reqType: "POST", path: "/path.tsdfasdfxt", want: "403 Forbidden", body: "Hello world"},
+		{reqType: "POST", path: "/path.css", want: "200 OK", body: "Hello world"},
 	}
 
 	for _, tr := range tests {
-		sendReq(t, tr)
+		sendPostReq(t, tr)
 	}
-
 }
 
-func sendReq(t *testing.T, tr testReq) {
-	// Create a pair of connected network connections
-	conn1, conn2 := net.Pipe()
-
-	// Run HandleConnection in a goroutine
-	go func() {
-		err := server.HandleConnection(conn1)
-		if err != nil {
-			t.Errorf("HandleConnection returned error: %v", err)
-		}
-	}()
-	// Use conn2 to send and receive data
-	var req *http.Request
-	var err error
-	if tr.reqType == "POST" {
-		req, err = http.NewRequest(tr.reqType, tr.path, strings.NewReader(tr.Body))
-		if err != nil {
-			t.Fatalf("Could not create HTTP request: %v", err)
-		}
-	}
-
+func sendGetReq(t *testing.T, tr testReq) {
 	if tr.reqType == "GET" {
-		req, err = http.NewRequest(tr.reqType, "/path", nil)
+		res, err := http.Get("http://0.0.0.0:8080" + tr.path)
 		if err != nil {
-			t.Fatalf("Could not create HTTP request: %v", err)
+			t.Fatalf("failed to send request: %v", err)
+		}
+
+		defer res.Body.Close()
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			t.Fatalf("failed to read body: %v", err)
+		}
+
+		if !reflect.DeepEqual(string(body), tr.want) {
+			t.Fatalf("\ngot:\t %s\nwant:\t %s", body, tr.want)
 		}
 	}
+}
 
-	err = req.Write(conn2)
-	if err != nil {
-		t.Fatalf("Could not write HTTP request: %v", err)
-	}
+func sendPostReq(t *testing.T, tr testReq) {
+	if tr.reqType == "POST" {
+		if tr.body == "" {
+			t.Fatal("No body provided in post request")
+		}
 
-	// Read the response
-	buf := make([]byte, 1024)
-	n, err := conn2.Read(buf)
-	if err != nil {
-		t.Fatalf("Failed to read from connection: %v", err)
-	}
-	// Check the response
+		inbody := strings.NewReader(tr.body)
+		res, err := http.Post("http://0.0.0.0:8080"+tr.path, tr.contentType, inbody)
+		if err != nil {
+			t.Fatalf("failed to send request: %v", err)
+		}
 
-	if string(buf[:n]) != tr.want {
-		t.Errorf("Unexpected response: %s", string(buf[:n]))
-		t.Errorf("Expected response: %s", tr.want)
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			t.Fatalf("failed to read body: %v", err)
+		}
+
+		if !reflect.DeepEqual(string(body), tr.want) {
+			t.Fatalf("\ngot:\t %s\nwant:\t %s", body, tr.want)
+		}
 	}
 }

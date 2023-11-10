@@ -2,9 +2,15 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 )
+
+func CreateFsDir() {
+	err := mkdir("/Users/samkaj/code/dist/http-lab/fs")
+	log.Printf("Failed to create fs directory: %v", err)
+}
 
 // Reads and returns the file contents of the specified path and any errors that occured.
 func GetFile(path string) ([]byte, error) {

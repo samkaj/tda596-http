@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
@@ -23,6 +22,9 @@ type Server struct {
 
 // CreateServer tries to create an HTTP server on the specified port and address.
 func CreateServer(address string, port, maxConnections int) (*Server, error) {
+	// Init fs directory if nonexistent
+	CreateFsDir()
+
 	if maxConnections < 1 || maxConnections > 10 {
 		return nil, fmt.Errorf("invalid amount of maximum number of connections (1-10), got %d", maxConnections)
 	}
@@ -74,7 +76,6 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 	log.Printf("Handling connection from %s", remoteAddr)
 
 	req, err := http.ReadRequest(bufio.NewReader(conn))
-	fmt.Printf("req: %v\n", req)
 	if err != nil {
 		if err != io.EOF {
 			log.Printf("Error reading request from %s: %v", remoteAddr, err)
@@ -97,6 +98,7 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 	case http.MethodGet:
 		s.HandleGet(req, res)
 	case http.MethodPost:
+		log.Print("Handling POST")
 		s.HandlePost(req, res)
 	default:
 		s.HandleForbidden(res)
@@ -111,7 +113,7 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 
 // DetermineContentType checks the file extension of a request.
 func DetermineContentType(req *http.Request) (string, error) {
-	ext := path.Ext(req.URL.Path)
+	ext := filepath.Ext(req.URL.Path)
 	switch ext {
 	case ".html":
 		return "text/html", nil
@@ -121,10 +123,9 @@ func DetermineContentType(req *http.Request) (string, error) {
 		return "image/gif", nil
 	case ".jpeg", ".jpg":
 		return "image/jpeg", nil
+	case ".txt", "":
+		return "text/plain", nil
 	default:
-		if ext == "" {
-			return "text/plain", nil
-		}
 		log.Printf("Invalid content type for extension: %s", ext)
 		return "", fmt.Errorf("unsupported content type: %s", ext)
 	}
@@ -142,7 +143,7 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	res.Header = make(http.Header)
 	res.Header.Set("Content-Type", contentType)
 
-	filePath := filepath.Join("./fs", req.URL.Path)
+	filePath := filepath.Join("/Users/samkaj/code/dist/http-lab/fs", req.URL.Path)
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -159,7 +160,13 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 
 // HandlePost processes POST requests.
 func (s *Server) HandlePost(req *http.Request, res *http.Response) {
-	filePath := filepath.Join("./fs", req.URL.Path)
+	filePath := filepath.Join("/Users/samkaj/code/dist/http-lab/fs", req.URL.Path)
+
+	_, err := DetermineContentType(req)
+	if err != nil {
+		s.HandleForbidden(res)
+		return
+	}
 
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -168,9 +175,9 @@ func (s *Server) HandlePost(req *http.Request, res *http.Response) {
 		return
 	}
 
-	err = os.WriteFile(filePath, data, 0644)
+	err = WriteFile(filePath, data)
 	if err != nil {
-		log.Printf("Error writing to file %s: %v", filePath, err)
+		log.Printf("Error writing to file %s with data %s: %v", filePath, data, err)
 		s.HandleInternalServerError(res)
 		return
 	}
