@@ -144,7 +144,7 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	res.Header.Set("Content-Type", contentType)
 
 	filePath := filepath.Join("/Users/samkaj/code/dist/http-lab/fs", req.URL.Path)
-	data, err := os.ReadFile(filePath)
+	data, err := GetFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			s.HandleNotFound(res)
