@@ -8,8 +8,10 @@ import (
 )
 
 func CreateFsDir() {
-	err := mkdir("/Users/samkaj/code/dist/http-lab/fs")
-	log.Printf("Failed to create fs directory: %v", err)
+	err := mkdir("C:/Users/Danie/Documents/Github/tda596-http/fs")
+	if(err != nil) {
+		log.Printf("Failed to create fs directory: %v", err)
+	}
 }
 
 // Reads and returns the file contents of the specified path and any errors that occured.
