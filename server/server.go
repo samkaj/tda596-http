@@ -74,8 +74,10 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 	remoteAddr := conn.RemoteAddr().String()
 	defer conn.Close()
 	log.Printf("Handling connection from %s", remoteAddr)
+	
 
 	req, err := http.ReadRequest(bufio.NewReader(conn))
+	
 	if err != nil {
 		if err != io.EOF {
 			log.Printf("Error reading request from %s: %v", remoteAddr, err)
@@ -93,15 +95,25 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 		ProtoMinor: 0,
 		Body:       io.NopCloser(strings.NewReader("")),
 	}
-
 	switch req.Method {
 	case http.MethodGet:
 		s.HandleGet(req, res)
 	case http.MethodPost:
-		log.Print("Handling POST")
 		s.HandlePost(req, res)
+	case http.MethodHead:
+		s.HandleNotImplemented(res)
+	case http.MethodPut:
+		s.HandleNotImplemented(res)
+	case http.MethodDelete:
+		s.HandleNotImplemented(res)
+	case http.MethodConnect:
+		s.HandleNotImplemented(res)
+	case http.MethodOptions:
+		s.HandleNotImplemented(res)
+	case http.MethodTrace:
+		s.HandleNotImplemented(res)
 	default:
-		s.HandleForbidden(res)
+		s.HandleBadRequest(res)
 	}
 
 	err = res.Write(conn)
@@ -136,7 +148,7 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	contentType, err := DetermineContentType(req)
 	if err != nil {
 		log.Printf("Error determining content type: %v", err)
-		s.HandleForbidden(res)
+		s.HandleBadRequest(res)
 		return
 	}
 
@@ -160,20 +172,29 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 
 // HandlePost processes POST requests.
 func (s *Server) HandlePost(req *http.Request, res *http.Response) {
+	
+	if(req.URL.Path == "" || req.URL.Path == "/") {
+		s.HandleBadRequest(res)
+		return
+	}
 	filePath := filepath.Join(os.Getenv("FS"), req.URL.Path)
+
+	
 
 	_, err := DetermineContentType(req)
 	if err != nil {
-		s.HandleForbidden(res)
+		s.HandleBadRequest(res)
 		return
 	}
 
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("Error reading request body: %v", err)
-		s.HandleForbidden(res)
+		s.HandleBadRequest(res)
 		return
 	}
+
+
 
 	err = WriteFile(filePath, data)
 	if err != nil {
@@ -192,12 +213,20 @@ func (s *Server) HandleNotFound(res *http.Response) {
 	res.Body = io.NopCloser(strings.NewReader("404 Not Found"))
 }
 
-// HandleForbidden handles forbidden HTTP methods by setting a 403 Forbidden response.
-func (s *Server) HandleForbidden(res *http.Response) {
-	res.Status = "403 Forbidden"
-	res.StatusCode = 403
-	res.Body = io.NopCloser(strings.NewReader("403 Forbidden"))
+// HandleNotFound builds a 404 Not Found response.
+func (s *Server) HandleNotImplemented(res *http.Response) {
+	res.Status = "501 Not Implemented"
+	res.StatusCode = 501
+	res.Body = io.NopCloser(strings.NewReader("501 Not Implemented"))
 }
+
+// HandleNotFound builds a 404 Not Found response.
+func (s *Server) HandleBadRequest(res *http.Response) {
+	res.Status = "400 Bad Request"
+	res.StatusCode = 400
+	res.Body = io.NopCloser(strings.NewReader("400 Bad Request"))
+}
+
 
 // HandleInternalServerError builds a 500 Internal Server Error response.
 func (s *Server) HandleInternalServerError(res *http.Response) {
