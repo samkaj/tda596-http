@@ -8,9 +8,9 @@ import (
 )
 
 func CreateFsDir() {
-    path := os.Getenv("FS")
+	path := os.Getenv("FS")
 	err := mkdir(path)
-	if(err != nil) {
+	if err != nil {
 		log.Printf("Failed to create fs directory at %s: %v", path, err)
 	}
 }
@@ -35,7 +35,7 @@ func WriteFile(path string, data []byte) error {
 		}
 	}
 
-	err := os.WriteFile(path, data, 0777) // FIXME: bad perms
+	err := os.WriteFile(path, data, 0777)
 	if err != nil {
 		return fmt.Errorf("failed to write file: %v", err)
 	}
@@ -46,7 +46,7 @@ func WriteFile(path string, data []byte) error {
 // Creates a directory at the specified path and returns any errors that occured.
 func mkdir(path string) error {
 	path = filepath.Dir(path)
-	err := os.MkdirAll(path, 0777) // FIXME: bad perms
+	err := os.MkdirAll(path, 0777)
 	if err != nil {
 		return fmt.Errorf("failed to create directory: %v", err)
 	}

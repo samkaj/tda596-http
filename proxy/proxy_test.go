@@ -29,10 +29,10 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
-    err := godotenv.Load("../.env")
-    if err != nil {
-        panic(err)
-    }
+	err := godotenv.Load("../.env")
+	if err != nil {
+		panic(err)
+	}
 
 	log.Println("Setup: creating server and proxy")
 	server, _ := server.CreateServer("0.0.0.0", 6060, 10)
@@ -44,13 +44,12 @@ func setup() {
 	proxy.Listen()
 	server.Listen()
 
-
 	go server.Serve()
 	go proxy.Serve()
 }
 
 func cleanup() {
-	 os.RemoveAll(os.Getenv("FS")) 
+	os.RemoveAll(os.Getenv("FS"))
 }
 
 func TestGetNotFound(t *testing.T) {
@@ -79,11 +78,10 @@ func TestPostForbidden(t *testing.T) {
 	}
 }
 
-
 func sendGetReq(t *testing.T, tr testReq) *http.Response {
 	if tr.reqType == "GET" {
 		serverURL := "0.0.0.0:6060" + tr.path
-    	proxyURL := "0.0.0.0:6061"
+		proxyURL := "0.0.0.0:6061"
 
 		proxy, err := url.Parse("http://" + proxyURL)
 		if err != nil {
@@ -122,11 +120,10 @@ func sendGetReq(t *testing.T, tr testReq) *http.Response {
 	return nil
 }
 
-
 func sendPostReq(t *testing.T, tr testReq) *http.Response {
 	if tr.reqType == "POST" {
-        serverURL := "http://0.0.0.0:6060" + tr.path
-        proxyURL := "http://0.0.0.0:6061"
+		serverURL := "http://0.0.0.0:6060" + tr.path
+		proxyURL := "http://0.0.0.0:6061"
 
 		proxy, err := url.Parse(proxyURL)
 		if err != nil {
@@ -143,7 +140,7 @@ func sendPostReq(t *testing.T, tr testReq) *http.Response {
 			Transport: transport,
 		}
 
-        req, err := http.NewRequest("POST", serverURL, bytes.NewBuffer([]byte(tr.body)))
+		req, err := http.NewRequest("POST", serverURL, bytes.NewBuffer([]byte(tr.body)))
 		if err != nil {
 			t.Fatalf("failed to create request: %v", err)
 		}
@@ -159,4 +156,3 @@ func sendPostReq(t *testing.T, tr testReq) *http.Response {
 	}
 	return nil
 }
-

@@ -11,10 +11,10 @@ import (
 )
 
 func main() {
-    err := godotenv.Load(".env")
-    if err != nil {
-        fmt.Println("failed to load environment variables, create the .env file")
-    }
+	err := godotenv.Load(".env")
+	if err != nil {
+		fmt.Println("failed to load environment variables, create the .env file")
+	}
 
 	log.SetPrefix("[PROXY] ")
 	port, err := strconv.Atoi(os.Args[1])

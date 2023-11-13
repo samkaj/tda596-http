@@ -63,7 +63,7 @@ func (p *Proxy) Serve() error {
 	}
 }
 
-// Manages incom HTTP requests from a proxy client and acts on their
+// Manages incoming HTTP requests from a proxy client and acts on their
 // behalf to communicate with the server.
 func (p *Proxy) HandleConnection(conn net.Conn) error {
 	defer conn.Close()

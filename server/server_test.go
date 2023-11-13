@@ -27,10 +27,10 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
-    err := godotenv.Load("../.env")
-    if err != nil {
-        panic(err)
-    }
+	err := godotenv.Load("../.env")
+	if err != nil {
+		panic(err)
+	}
 	log.Println("Setup: creating server")
 	server, _ := CreateServer("0.0.0.0", 8080, 10)
 	server.Listen()
