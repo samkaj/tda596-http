@@ -74,10 +74,9 @@ func (s *Server) HandleConnection(conn net.Conn) error {
 	remoteAddr := conn.RemoteAddr().String()
 	defer conn.Close()
 	log.Printf("Handling connection from %s", remoteAddr)
-	
 
 	req, err := http.ReadRequest(bufio.NewReader(conn))
-	
+
 	if err != nil {
 		if err != io.EOF {
 			log.Printf("Error reading request from %s: %v", remoteAddr, err)
@@ -172,14 +171,12 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 
 // HandlePost processes POST requests.
 func (s *Server) HandlePost(req *http.Request, res *http.Response) {
-	
-	if(req.URL.Path == "" || req.URL.Path == "/") {
+
+	if req.URL.Path == "" || req.URL.Path == "/" {
 		s.HandleBadRequest(res)
 		return
 	}
 	filePath := filepath.Join(os.Getenv("FS"), req.URL.Path)
-
-	
 
 	_, err := DetermineContentType(req)
 	if err != nil {
@@ -193,8 +190,6 @@ func (s *Server) HandlePost(req *http.Request, res *http.Response) {
 		s.HandleBadRequest(res)
 		return
 	}
-
-
 
 	err = WriteFile(filePath, data)
 	if err != nil {
@@ -226,7 +221,6 @@ func (s *Server) HandleBadRequest(res *http.Response) {
 	res.StatusCode = 400
 	res.Body = io.NopCloser(strings.NewReader("400 Bad Request"))
 }
-
 
 // HandleInternalServerError builds a 500 Internal Server Error response.
 func (s *Server) HandleInternalServerError(res *http.Response) {

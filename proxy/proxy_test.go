@@ -83,8 +83,8 @@ func TestGetExistingFile(t *testing.T) {
 	path := os.Getenv("FS")
 
 	//Create files in FS directory
-	server.WriteFile(path +"/test.txt", []byte("Hello world"))
-	server.WriteFile(path +"/test.html", []byte("<p>Hello world</p>"))
+	server.WriteFile(path+"/test.txt", []byte("Hello world"))
+	server.WriteFile(path+"/test.html", []byte("<p>Hello world</p>"))
 
 	tests := []testReq{
 		{reqType: "GET", path: "/test.txt", want: "Hello world"},
@@ -95,7 +95,6 @@ func TestGetExistingFile(t *testing.T) {
 		sendGetReq(t, tr)
 	}
 }
-
 
 func sendGetReq(t *testing.T, tr testReq) *http.Response {
 	if tr.reqType == "GET" {
