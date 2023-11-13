@@ -23,6 +23,7 @@
 
 Our solution uses godotenv to set a path to the directory which is used for storing and getting files, you need to specify a path to make it work.
 
+Set the following in the file named `.env`. 
 ```bash
 FS="/set/your/abs/path/here"
 ```
