@@ -19,6 +19,14 @@
 
 ## Running
 
+### Setting the environment variable
+
+Our solution uses godotenv to set a path to the directory which is used for storing and getting files, you need to specify a path to make it work.
+
+```bash
+FS="/set/your/abs/path/here"
+```
+
 ### Tests
 
 The project has been tested on MacOS and Fedora Linux.
