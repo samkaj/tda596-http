@@ -74,7 +74,7 @@ func TestPostContentType(t *testing.T) {
 
 func TestPostFile(t *testing.T) {
 	tests := []testReq{
-		{name: "Get non existant file", reqType: "GET", path: "/test.txt", want: "404 Not Found"},
+		{name: "Get non-existent file", reqType: "GET", path: "/tesasdfasdft.txt", want: "404 Not Found"},
 		{name: "Post test.txt", reqType: "POST", path: "/test.txt", want: "200 OK", body: "Hello world"},
 		{name: "Get test.txt", reqType: "GET", path: "/test.txt", want: "Hello world"},
 		{name: "Post without specifying filename", reqType: "POST", path: "", want: "400 Bad Request"},
@@ -239,7 +239,7 @@ func sendReq(t *testing.T, tr testReq) *http.Response {
 		return res
 	}
 
-	t.Fatalf("Non existant request method: %v", tr.reqType)
+	t.Fatalf("Non-existent request method: %v", tr.reqType)
 	return nil
 }
 
