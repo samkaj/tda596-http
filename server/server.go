@@ -143,7 +143,7 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 	res.Header = make(http.Header)
 	res.Header.Set("Content-Type", contentType)
 
-	filePath := filepath.Join("/Users/samkaj/code/dist/http-lab/fs", req.URL.Path)
+	filePath := filepath.Join(os.Getenv("FS"), req.URL.Path)
 	data, err := GetFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -160,7 +160,7 @@ func (s *Server) HandleGet(req *http.Request, res *http.Response) {
 
 // HandlePost processes POST requests.
 func (s *Server) HandlePost(req *http.Request, res *http.Response) {
-	filePath := filepath.Join("/Users/samkaj/code/dist/http-lab/fs", req.URL.Path)
+	filePath := filepath.Join(os.Getenv("FS"), req.URL.Path)
 
 	_, err := DetermineContentType(req)
 	if err != nil {

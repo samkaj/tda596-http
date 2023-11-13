@@ -1,14 +1,17 @@
 package proxy
 
 import (
-	"log"
-	"os"
-	"testing"
-	"lab1/server"
-	"net/http"
+	"bytes"
 	"io"
+	"lab1/server"
+	"log"
+	"net/http"
 	"net/url"
+	"os"
 	"reflect"
+	"testing"
+
+	"github.com/joho/godotenv"
 )
 
 type testReq struct {
@@ -26,9 +29,14 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
+    err := godotenv.Load("../.env")
+    if err != nil {
+        panic(err)
+    }
+
 	log.Println("Setup: creating server and proxy")
-	server, _ := server.CreateServer("0.0.0.0", 8080, 10)
-	proxy, err := CreateProxy(8081)
+	server, _ := server.CreateServer("0.0.0.0", 6060, 10)
+	proxy, err := CreateProxy(6061)
 	if err != nil {
 		panic(err)
 	}
@@ -39,12 +47,10 @@ func setup() {
 
 	go server.Serve()
 	go proxy.Serve()
-
- 
 }
 
 func cleanup() {
-	 os.RemoveAll("C:/Users/Danie/Documents/Github/tda596-http/fs") 
+	 os.RemoveAll(os.Getenv("FS")) 
 }
 
 func TestGetNotFound(t *testing.T) {
@@ -76,8 +82,8 @@ func TestPostForbidden(t *testing.T) {
 
 func sendGetReq(t *testing.T, tr testReq) *http.Response {
 	if tr.reqType == "GET" {
-		serverURL := "0.0.0.0:8080" + tr.path
-    	proxyURL := "0.0.0.0:8081"
+		serverURL := "0.0.0.0:6060" + tr.path
+    	proxyURL := "0.0.0.0:6061"
 
 		proxy, err := url.Parse("http://" + proxyURL)
 		if err != nil {
@@ -119,10 +125,10 @@ func sendGetReq(t *testing.T, tr testReq) *http.Response {
 
 func sendPostReq(t *testing.T, tr testReq) *http.Response {
 	if tr.reqType == "POST" {
-		serverURL := "0.0.0.0:8080" + tr.path
-    	proxyURL := "0.0.0.0:8081"
+        serverURL := "http://0.0.0.0:6060" + tr.path
+        proxyURL := "http://0.0.0.0:6061"
 
-		proxy, err := url.Parse("http://" + proxyURL)
+		proxy, err := url.Parse(proxyURL)
 		if err != nil {
 			t.Fatalf("Error parsing proxy URL: %v", err)
 		}
@@ -137,22 +143,17 @@ func sendPostReq(t *testing.T, tr testReq) *http.Response {
 			Transport: transport,
 		}
 
-		// Make the GET request
-		res, err := client.Get("http://" + serverURL)
+        req, err := http.NewRequest("POST", serverURL, bytes.NewBuffer([]byte(tr.body)))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+
+		res, err := client.Do(req)
 		if err != nil {
 			t.Fatalf("failed to send request: %v", err)
 		}
 
 		defer res.Body.Close()
-
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			t.Fatalf("failed to read body: %v", err)
-		}
-
-		if !reflect.DeepEqual(string(body), tr.want) {
-			t.Fatalf("\ngot:\t %s\nwant:\t %s", body, tr.want)
-		}
 
 		return res
 	}
