@@ -21,7 +21,7 @@ You can run the server locally or using docker.
 #### Docker
 
 ```bash
-docker build --tag http_server .
+docker build --rm --tag http_server -f server.Dockerfile .
 docker run -p 8080:<port> http_server <ip> <port>
 ```
 
@@ -35,7 +35,14 @@ go build -o http_server main.go
 
 ### Proxy
 
-The proxy can at the moment only run locally, do so by issuing the following command:
+#### Docker
+
+```bash
+docker build --rm --tag proxy -f proxy.Dockerfile .
+docker run -p 6060:<port> proxy <port>
+```
+
+#### Locally
 
 ```bash
 cd cmd/proxy
