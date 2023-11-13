@@ -45,7 +45,8 @@ func (p *Proxy) Listen() error {
 // See server/server.go.
 func (p *Proxy) Serve() error {
 	for {
-		if <-p.proxyServer.Sem {
+		select {
+		case <-p.proxyServer.Sem:
 			conn, err := p.proxyServer.Listener.Accept()
 			if err != nil {
 				log.Printf("Failed to accept connection: %v\n", err)
