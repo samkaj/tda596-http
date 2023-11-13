@@ -78,6 +78,25 @@ func TestPostForbidden(t *testing.T) {
 	}
 }
 
+func TestGetExistingFile(t *testing.T) {
+
+	path := os.Getenv("FS")
+
+	//Create files in FS directory
+	server.WriteFile(path +"/test.txt", []byte("Hello world"))
+	server.WriteFile(path +"/test.html", []byte("<p>Hello world</p>"))
+
+	tests := []testReq{
+		{reqType: "GET", path: "/test.txt", want: "Hello world"},
+		{reqType: "GET", path: "/test.html", want: "<p>Hello world</p>"},
+	}
+
+	for _, tr := range tests {
+		sendGetReq(t, tr)
+	}
+}
+
+
 func sendGetReq(t *testing.T, tr testReq) *http.Response {
 	if tr.reqType == "GET" {
 		serverURL := "0.0.0.0:6060" + tr.path
