@@ -14,10 +14,10 @@ COPY cmd ./cmd
 
 RUN mkdir bin
 RUN mkdir fs
-RUN echo "FS=\"app/fs\"" > .env
+RUN echo "FS=\"/app/fs\"" > .env
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o proxy_bin /app/cmd/proxy/main.go
 RUN mv proxy_bin bin/proxy
-EXPOSE 6060
+EXPOSE 80
 
-ENTRYPOINT ["/app/bin/proxy"]
+CMD ["/app/bin/proxy", "80"]

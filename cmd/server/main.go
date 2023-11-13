@@ -11,11 +11,11 @@ import (
 )
 
 func main() {
-	err := godotenv.Load("../../.env")
+	err := godotenv.Load(".env")
 
 	fmt.Println("Default directory: ", os.Getenv("FS"))
 	if err != nil {
-		fmt.Println("failed to load environment variables, create the .env file")
+        fmt.Printf("failed to load environment variables, create the .env file: %v\n", err)
 	}
 
 	log.SetPrefix("[SERVER] ")

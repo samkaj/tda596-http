@@ -11,10 +11,10 @@ COPY server ./server
 COPY cmd ./cmd
 
 RUN mkdir fs
-RUN echo "FS=\"app/fs\"" > .env
+RUN echo "FS=\"/app/fs\"" > .env
 RUN chmod +x /app/server
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/http_server /app/cmd/server/main.go
-EXPOSE 8080
+EXPOSE 80
 
-ENTRYPOINT ["/app/http_server"]
+CMD ["/app/http_server", "0.0.0.0", "80"]

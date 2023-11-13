@@ -12,7 +12,20 @@
 - Simple HTTP server ([server]('/server')) serving static files via GET and POST
 - Simple proxy ([proxy]('/proxy')) implementation supporting GET requests
 
+## Cloud
+
+- The HTTP server is hosted on AWS and can be accessed at `52.203.125.74:80`
+- The proxy is hosted on AWS and can be accessed at `54.81.33.35:80`
+
 ## Running
+
+### Tests
+
+The project has been tested on MacOS and Fedora Linux.
+
+```
+go test ./... -v
+```
 
 ### Server
 
@@ -22,7 +35,7 @@ You can run the server locally or using docker.
 
 ```bash
 docker build --rm --tag http_server -f server.Dockerfile .
-docker run -p 8080:<port> http_server <ip> <port>
+docker run -p 80:<port> http_server
 ```
 
 #### Locally
@@ -39,7 +52,7 @@ go build -o http_server main.go
 
 ```bash
 docker build --rm --tag proxy -f proxy.Dockerfile .
-docker run -p 6060:<port> proxy <port>
+docker run -p 80:<port> proxy 
 ```
 
 #### Locally
