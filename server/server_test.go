@@ -38,7 +38,8 @@ func setup() {
 }
 
 func cleanup() {
-	os.RemoveAll("/Users/samkaj/code/dist/http-lab/fs")
+	fsPath := os.Getenv("FS")
+	os.RemoveAll(fsPath)
 }
 
 func TestGetNotFound(t *testing.T) {
