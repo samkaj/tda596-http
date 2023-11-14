@@ -15,7 +15,7 @@
 ## Cloud
 
 - The HTTP server is hosted on AWS and can be accessed at `52.203.125.74:80`
-- The proxy is hosted on AWS and can be accessed at `54.81.33.35:80`
+- The proxy is hosted on AWS and can be accessed at `3.238.138.216:80`
 
 ## Running
 
