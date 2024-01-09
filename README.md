@@ -12,11 +12,6 @@
 - Simple HTTP server ([server]('/server')) serving static files via GET and POST
 - Simple proxy ([proxy]('/proxy')) implementation supporting GET requests
 
-## Cloud
-
-- The HTTP server is hosted on AWS and can be accessed at `52.203.125.74:80`
-- The proxy is hosted on AWS and can be accessed at `3.238.138.216:80`
-
 ## Running
 
 ### Setting the environment variable
